@@ -38,6 +38,14 @@ final class PlayerStore {
         category: "BeatNet"
     )
 
+    // Playback clock samples arrive every 100 ms. Persisting the complete
+    // queue and its song models every second needlessly encodes the same
+    // snapshot while a track is playing. Explicit playback state changes
+    // still call persistSnapshot immediately; this interval only throttles
+    // progress-only updates.
+    private static let playbackSnapshotProgressInterval: TimeInterval = 5
+    private static let playbackProgressPublicationInterval: TimeInterval = 0.25
+
     private(set) var currentSong: Song?
     private(set) var isPlaying = false
     private(set) var progress: TimeInterval = 0
@@ -184,6 +192,9 @@ final class PlayerStore {
 
     @ObservationIgnored
     private var lastPersistedSecond = -1
+
+    @ObservationIgnored
+    private var lastPublishedProgressAt: Date?
 
     @ObservationIgnored
     private var playbackTimelineClock = PlaybackTimelineClock()
@@ -1228,7 +1239,16 @@ final class PlayerStore {
         let measuredProgress = clampedPlaybackPosition(
             sample.position
         )
-        progress = measuredProgress
+        let shouldPublishProgress =
+            sample.origin != .periodic
+            || lastPublishedProgressAt.map {
+                sample.sampledAt.timeIntervalSince($0)
+                    >= Self.playbackProgressPublicationInterval
+            } ?? true
+        if shouldPublishProgress {
+            progress = measuredProgress
+            lastPublishedProgressAt = sample.sampledAt
+        }
         reanchorPlaybackTimeline(
             to: measuredProgress,
             rate: sample.rate,
@@ -1238,7 +1258,8 @@ final class PlayerStore {
         updateLyricsLiveActivity()
         updateLyricsNotification()
         let second = Int(measuredProgress)
-        if second != lastPersistedSecond {
+        if abs(measuredProgress - Double(lastPersistedSecond))
+            >= Self.playbackSnapshotProgressInterval {
             lastPersistedSecond = second
             persistSnapshot()
         }
