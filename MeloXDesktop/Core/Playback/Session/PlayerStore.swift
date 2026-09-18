@@ -44,7 +44,6 @@ final class PlayerStore {
     // still call persistSnapshot immediately; this interval only throttles
     // progress-only updates.
     private static let playbackSnapshotProgressInterval: TimeInterval = 5
-    private static let playbackProgressPublicationInterval: TimeInterval = 0.25
 
     private(set) var currentSong: Song?
     private(set) var isPlaying = false
@@ -192,9 +191,6 @@ final class PlayerStore {
 
     @ObservationIgnored
     private var lastPersistedSecond = -1
-
-    @ObservationIgnored
-    private var lastPublishedProgressAt: Date?
 
     @ObservationIgnored
     private var isPlaybackUIActive = true
@@ -774,7 +770,6 @@ final class PlayerStore {
 
         let currentProgress = clampedPlaybackPosition(estimatedProgress())
         progress = currentProgress
-        lastPublishedProgressAt = Date()
         updateNowPlayingLyricMetadata(force: true)
         updateLyricsLiveActivity(force: true)
         updateLyricsNotification(force: true)
@@ -1255,18 +1250,12 @@ final class PlayerStore {
         let measuredProgress = clampedPlaybackPosition(
             sample.position
         )
-        let shouldPublishProgress =
-            isPlaybackUIActive
-            && (
-                sample.origin != .periodic
-                || lastPublishedProgressAt.map {
-                    sample.sampledAt.timeIntervalSince($0)
-                        >= Self.playbackProgressPublicationInterval
-                } ?? true
-            )
-        if shouldPublishProgress {
+        // Keep the foreground display on the same 100 ms clock as the
+        // player. Only suppress the observable update while the app is
+        // inactive; returning to the foreground publishes immediately in
+        // setPlaybackUIActive(_:).
+        if isPlaybackUIActive {
             progress = measuredProgress
-            lastPublishedProgressAt = sample.sampledAt
         }
         reanchorPlaybackTimeline(
             to: measuredProgress,
