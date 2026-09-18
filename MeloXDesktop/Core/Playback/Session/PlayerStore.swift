@@ -192,8 +192,7 @@ final class PlayerStore {
     @ObservationIgnored
     private var lastPersistedSecond = -1
 
-    @ObservationIgnored
-    private var isPlaybackUIActive = true
+    private(set) var isPlaybackUIActive = true
 
     @ObservationIgnored
     private var playbackTimelineClock = PlaybackTimelineClock()

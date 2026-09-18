@@ -267,14 +267,26 @@ private struct DesktopWindowVisibilityReader: NSViewRepresentable {
             NotificationCenter.default.addObserver(
                 self,
                 selector: #selector(publishVisibility),
+                name: NSWindow.didBecomeKeyNotification,
+                object: window
+            )
+            NotificationCenter.default.addObserver(
+                self,
+                selector: #selector(publishVisibility),
+                name: NSWindow.didResignKeyNotification,
+                object: window
+            )
+            NotificationCenter.default.addObserver(
+                self,
+                selector: #selector(publishVisibility),
                 name: NSApplication.didBecomeActiveNotification,
-                object: NSApp
+                object: nil
             )
             NotificationCenter.default.addObserver(
                 self,
                 selector: #selector(publishVisibility),
                 name: NSApplication.didResignActiveNotification,
-                object: NSApp
+                object: nil
             )
             publishVisibility()
         }
@@ -287,6 +299,7 @@ private struct DesktopWindowVisibilityReader: NSViewRepresentable {
             onChange(
                 window.isVisible
                     && window.occlusionState.contains(.visible)
+                    && (window.isMainWindow || window.isKeyWindow)
                     && NSApp.isActive
             )
         }

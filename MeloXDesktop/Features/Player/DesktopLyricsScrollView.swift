@@ -406,6 +406,7 @@ struct DesktopLyricsScrollView: View {
     private var isLyricsRenderingActive: Bool {
         coordinatesPlaybackFocus
             && scenePhase == .active
+            && model.player.isPlaybackUIActive
             && !isViewportChanging
     }
 
