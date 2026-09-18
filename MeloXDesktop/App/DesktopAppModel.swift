@@ -68,7 +68,6 @@ final class DesktopAppModel {
         hasBootstrapped = true
 
         await player.restore()
-        await activateDebugPlaybackPageIfRequested()
         async let homeLoad: Void = home.load()
         async let notificationLoad: Void = lyricsNotifications
             .refreshAuthorizationStatus()
@@ -82,6 +81,9 @@ final class DesktopAppModel {
         }
         _ = await (homeLoad, notificationLoad)
         await synchronizeLyrics()
+        // Apply this after launch-time clipboard/update tasks so the debug
+        // harness always ends on the real dynamic playback page.
+        await activateDebugPlaybackPageIfRequested()
     }
 
     /// Test-only entry point for repeatable real-player performance runs.
