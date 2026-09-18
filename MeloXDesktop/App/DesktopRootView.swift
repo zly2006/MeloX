@@ -299,8 +299,6 @@ private struct DesktopWindowVisibilityReader: NSViewRepresentable {
             onChange(
                 window.isVisible
                     && window.occlusionState.contains(.visible)
-                    && (window.isMainWindow || window.isKeyWindow)
-                    && NSApp.isActive
             )
         }
 

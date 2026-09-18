@@ -50,6 +50,7 @@ final class PlayerStore {
     private(set) var progress: TimeInterval = 0
     private(set) var duration: TimeInterval = 0
     private(set) var seekRevision = 0
+    private(set) var playbackUIActivationRevision = 0
     private(set) var isLoading = false
     private(set) var playbackIssue: PlaybackIssue?
     private(set) var volume: Double = 1
@@ -767,6 +768,7 @@ final class PlayerStore {
         isPlaybackUIActive = active
         guard active else { return }
 
+        playbackUIActivationRevision &+= 1
         let currentProgress = clampedPlaybackPosition(estimatedProgress())
         progress = currentProgress
         updateNowPlayingLyricMetadata(force: true)
