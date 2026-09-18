@@ -88,9 +88,11 @@ final class DesktopAppModel {
     /// It uses the restored song and queue so old and new builds can be
     /// launched into the same dynamic lyrics page without manual clicks.
     private func activateDebugPlaybackPageIfRequested() async {
-        guard ProcessInfo.processInfo.environment[
-            "MELOX_DEBUG_FIXED_PLAYBACK_PAGE"
-        ] == "1" else { return }
+        let environment = ProcessInfo.processInfo.environment
+        guard environment["MELOX_DEBUG_FIXED_PLAYBACK_PAGE"] == "1"
+            || CommandLine.arguments.contains(
+                "--melox-debug-fixed-playback-page"
+            ) else { return }
         guard player.currentSong != nil else {
             print("[MeloX debug] fixed playback page requested without a restored song")
             return

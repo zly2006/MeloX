@@ -953,6 +953,7 @@ final class PlayerStore {
         let debugMuted = ProcessInfo.processInfo.environment[
             "MELOX_DEBUG_MUTE"
         ] == "1"
+            || CommandLine.arguments.contains("--melox-debug-mute")
         let effectiveVolume = debugMuted
             ? 0
             : settings.playerVolumeControlMode == .independent
