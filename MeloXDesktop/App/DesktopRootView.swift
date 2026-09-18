@@ -1,3 +1,5 @@
+import AppKit
+import CoreGraphics
 import SwiftUI
 
 struct DesktopRootView: View {
@@ -299,7 +301,56 @@ private struct DesktopWindowVisibilityReader: NSViewRepresentable {
             onChange(
                 window.isVisible
                     && window.occlusionState.contains(.visible)
+                    && !Self.isFullyCovered(window)
             )
+        }
+
+        private static func isFullyCovered(_ window: NSWindow) -> Bool {
+            // A frontmost active app may still have same-sized windows from
+            // other Spaces in the on-screen list. OcclusionState remains the
+            // authoritative signal for normal and partial occlusion; this
+            // geometry check only supplements it while the app is inactive.
+            guard !NSApp.isActive else { return false }
+            let windowID = CGWindowID(window.windowNumber)
+            let windowFrame = window.frame
+            guard windowFrame.width > 0, windowFrame.height > 0,
+                  let windowList = CGWindowListCopyWindowInfo(
+                      [.optionOnScreenOnly],
+                      kCGNullWindowID
+            ) as? [[String: Any]] else {
+                return false
+            }
+
+            for info in windowList {
+                guard let candidateNumber = info[kCGWindowNumber as String]
+                        as? NSNumber else { continue }
+                let candidateID = CGWindowID(candidateNumber.uint32Value)
+                if candidateID == windowID { return false }
+                guard let alpha = (info[kCGWindowAlpha as String]
+                    as? NSNumber)?.doubleValue,
+                      alpha > 0.01,
+                      let bounds = info[kCGWindowBounds as String]
+                        as? [String: Any],
+                      let x = (bounds["X"] as? NSNumber)?.doubleValue,
+                      let y = (bounds["Y"] as? NSNumber)?.doubleValue,
+                      let width = (bounds["Width"] as? NSNumber)?.doubleValue,
+                      let height = (bounds["Height"] as? NSNumber)?.doubleValue else {
+                    continue
+                }
+
+                let candidateFrame = CGRect(
+                    x: x,
+                    y: y,
+                    width: width,
+                    height: height
+                )
+                let sameSize = abs(candidateFrame.width - windowFrame.width)
+                    < 1
+                    && abs(candidateFrame.height - windowFrame.height) < 1
+                guard sameSize else { continue }
+                return true
+            }
+            return false
         }
 
         deinit {
