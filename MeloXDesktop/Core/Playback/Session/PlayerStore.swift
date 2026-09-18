@@ -950,9 +950,14 @@ final class PlayerStore {
     }
 
     func applyVolumeControlMode() {
-        let effectiveVolume = settings.playerVolumeControlMode == .independent
-            ? volume
-            : 1
+        let debugMuted = ProcessInfo.processInfo.environment[
+            "MELOX_DEBUG_MUTE"
+        ] == "1"
+        let effectiveVolume = debugMuted
+            ? 0
+            : settings.playerVolumeControlMode == .independent
+                ? volume
+                : 1
         engine.setVolume(effectiveVolume)
     }
 
