@@ -197,6 +197,9 @@ final class PlayerStore {
     private var lastPublishedProgressAt: Date?
 
     @ObservationIgnored
+    private var isPlaybackUIActive = true
+
+    @ObservationIgnored
     private var playbackTimelineClock = PlaybackTimelineClock()
 
     @ObservationIgnored
@@ -764,6 +767,19 @@ final class PlayerStore {
         )
     }
 
+    func setPlaybackUIActive(_ active: Bool) {
+        guard active != isPlaybackUIActive else { return }
+        isPlaybackUIActive = active
+        guard active else { return }
+
+        let currentProgress = clampedPlaybackPosition(estimatedProgress())
+        progress = currentProgress
+        lastPublishedProgressAt = Date()
+        updateNowPlayingLyricMetadata(force: true)
+        updateLyricsLiveActivity(force: true)
+        updateLyricsNotification(force: true)
+    }
+
     private var playbackDurationLimit: TimeInterval {
         if duration.isFinite, duration > 0 {
             return duration
@@ -1240,11 +1256,14 @@ final class PlayerStore {
             sample.position
         )
         let shouldPublishProgress =
-            sample.origin != .periodic
-            || lastPublishedProgressAt.map {
-                sample.sampledAt.timeIntervalSince($0)
-                    >= Self.playbackProgressPublicationInterval
-            } ?? true
+            isPlaybackUIActive
+            && (
+                sample.origin != .periodic
+                || lastPublishedProgressAt.map {
+                    sample.sampledAt.timeIntervalSince($0)
+                        >= Self.playbackProgressPublicationInterval
+                } ?? true
+            )
         if shouldPublishProgress {
             progress = measuredProgress
             lastPublishedProgressAt = sample.sampledAt
@@ -1261,7 +1280,7 @@ final class PlayerStore {
         if abs(measuredProgress - Double(lastPersistedSecond))
             >= Self.playbackSnapshotProgressInterval {
             lastPersistedSecond = second
-            persistSnapshot()
+            persistSnapshot(progressOverride: measuredProgress)
         }
         prepareAutoMixIfNeeded()
     }
@@ -1621,7 +1640,7 @@ final class PlayerStore {
         downloads.recordPlayback(currentSong)
     }
 
-    private func persistSnapshot() {
+    private func persistSnapshot(progressOverride: TimeInterval? = nil) {
         guard !queue.isEmpty else {
             persistence.clear()
             return
@@ -1630,7 +1649,7 @@ final class PlayerStore {
             PlaybackSnapshot(
                 queue: queue,
                 currentIndex: currentIndex,
-                progress: progress,
+                progress: progressOverride ?? progress,
                 repeatMode: repeatMode.rawValue,
                 isShuffled: isShuffled,
                 shuffledOrder: playbackQueue.persistedShuffleOrder,

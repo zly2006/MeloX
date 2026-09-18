@@ -4,6 +4,7 @@ struct DesktopRootView: View {
     @Environment(DesktopAppModel.self) private var model
     @Environment(\.openWindow) private var openWindow
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.scenePhase) private var scenePhase
     @State private var isNowPlayingLayerMounted = false
     @State private var isNowPlayingRenderingActive = false
 
@@ -80,6 +81,9 @@ struct DesktopRootView: View {
         .tint(.red)
         .desktopLaunchExperience()
         .task { await model.bootstrap() }
+        .onChange(of: scenePhase, initial: true) { _, phase in
+            model.player.setPlaybackUIActive(phase == .active)
+        }
         .task(id: ui.isNowPlayingPresented) {
             await updateNowPlayingLifecycle(
                 isPresented: ui.isNowPlayingPresented
