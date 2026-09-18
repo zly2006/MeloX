@@ -7,6 +7,7 @@ struct DesktopRootView: View {
     @Environment(\.scenePhase) private var scenePhase
     @State private var isNowPlayingLayerMounted = false
     @State private var isNowPlayingRenderingActive = false
+    @State private var isWindowActuallyVisible = true
 
     var body: some View {
         @Bindable var ui = model.ui
@@ -82,7 +83,13 @@ struct DesktopRootView: View {
         .desktopLaunchExperience()
         .task { await model.bootstrap() }
         .onChange(of: scenePhase, initial: true) { _, phase in
-            model.player.setPlaybackUIActive(phase == .active)
+            updatePlaybackUIActivity(for: phase)
+        }
+        .background {
+            DesktopWindowVisibilityReader { isVisible in
+                isWindowActuallyVisible = isVisible
+                updatePlaybackUIActivity(for: scenePhase)
+            }
         }
         .task(id: ui.isNowPlayingPresented) {
             await updateNowPlayingLifecycle(
@@ -133,6 +140,12 @@ struct DesktopRootView: View {
                 ui.isNowPlayingPresented = false
             }
         }
+    }
+
+    private func updatePlaybackUIActivity(for phase: ScenePhase) {
+        model.player.setPlaybackUIActive(
+            phase == .active && isWindowActuallyVisible
+        )
     }
 
     private func nowPlayingLayer(
@@ -208,6 +221,78 @@ struct DesktopRootView: View {
         transaction.disablesAnimations = true
         withTransaction(transaction) {
             isNowPlayingRenderingActive = isActive
+        }
+    }
+}
+
+private struct DesktopWindowVisibilityReader: NSViewRepresentable {
+    let onChange: (Bool) -> Void
+
+    func makeNSView(context: Context) -> ObserverView {
+        ObserverView(onChange: onChange)
+    }
+
+    func updateNSView(_ nsView: ObserverView, context: Context) {
+        nsView.onChange = onChange
+        nsView.publishVisibility()
+    }
+
+    final class ObserverView: NSView {
+        var onChange: (Bool) -> Void
+        private weak var observedWindow: NSWindow?
+
+        init(onChange: @escaping (Bool) -> Void) {
+            self.onChange = onChange
+            super.init(frame: .zero)
+        }
+
+        required init?(coder: NSCoder) {
+            fatalError("init(coder:) has not been implemented")
+        }
+
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            NotificationCenter.default.removeObserver(self)
+            observedWindow = window
+            guard let window else {
+                onChange(false)
+                return
+            }
+            NotificationCenter.default.addObserver(
+                self,
+                selector: #selector(publishVisibility),
+                name: NSWindow.didChangeOcclusionStateNotification,
+                object: window
+            )
+            NotificationCenter.default.addObserver(
+                self,
+                selector: #selector(publishVisibility),
+                name: NSApplication.didBecomeActiveNotification,
+                object: NSApp
+            )
+            NotificationCenter.default.addObserver(
+                self,
+                selector: #selector(publishVisibility),
+                name: NSApplication.didResignActiveNotification,
+                object: NSApp
+            )
+            publishVisibility()
+        }
+
+        @objc func publishVisibility() {
+            guard let window else {
+                onChange(false)
+                return
+            }
+            onChange(
+                window.isVisible
+                    && window.occlusionState.contains(.visible)
+                    && NSApp.isActive
+            )
+        }
+
+        deinit {
+            NotificationCenter.default.removeObserver(self)
         }
     }
 }
