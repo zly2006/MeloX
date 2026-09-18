@@ -68,6 +68,7 @@ final class DesktopAppModel {
         hasBootstrapped = true
 
         await player.restore()
+        await activateDebugPlaybackPageIfRequested()
         async let homeLoad: Void = home.load()
         async let notificationLoad: Void = lyricsNotifications
             .refreshAuthorizationStatus()
@@ -81,6 +82,27 @@ final class DesktopAppModel {
         }
         _ = await (homeLoad, notificationLoad)
         await synchronizeLyrics()
+    }
+
+    /// Test-only entry point for repeatable real-player performance runs.
+    /// It uses the restored song and queue so old and new builds can be
+    /// launched into the same dynamic lyrics page without manual clicks.
+    private func activateDebugPlaybackPageIfRequested() async {
+        guard ProcessInfo.processInfo.environment[
+            "MELOX_DEBUG_FIXED_PLAYBACK_PAGE"
+        ] == "1" else { return }
+        guard player.currentSong != nil else {
+            print("[MeloX debug] fixed playback page requested without a restored song")
+            return
+        }
+
+        ui.isNowPlayingPresented = true
+        if !player.isPlaying {
+            player.togglePlayback()
+        }
+        print(
+            "[MeloX debug] fixed playback page active for song \(player.currentSong?.id ?? 0)"
+        )
     }
 
     func synchronizeLyrics() async {
