@@ -29,6 +29,7 @@ struct DesktopLyricsScrollView: View {
     private static let viewportMaskTopContentClearance: CGFloat = 2
 
     @Environment(DesktopAppModel.self) private var model
+    @Environment(\.scenePhase) private var scenePhase
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var scrollRequest: ScrollRequest?
     @State private var isInitialFocusPrepared = false
@@ -402,6 +403,12 @@ struct DesktopLyricsScrollView: View {
             )
     }
 
+    private var isLyricsRenderingActive: Bool {
+        coordinatesPlaybackFocus
+            && scenePhase == .active
+            && !isViewportChanging
+    }
+
     var body: some View {
         GeometryReader { geometry in
             Group {
@@ -458,7 +465,7 @@ struct DesktopLyricsScrollView: View {
             AppleMusicLyricsFocusCoordinator(
                 lyrics: model.lyrics.lyrics,
                 interludes: interludes,
-                isActive: coordinatesPlaybackFocus,
+                isActive: isLyricsRenderingActive,
                 playbackFocus: $playbackFocus,
                 timelineHighlightedLyricID: $timelineHighlightedLyricID,
                 visibleInterludeID: $visibleInterludeID,
@@ -473,7 +480,7 @@ struct DesktopLyricsScrollView: View {
         )
         .environment(
             \.lyricsRenderingIsActive,
-            isActive && acceptsGeometryUpdates && !isViewportChanging
+            isLyricsRenderingActive
         )
     }
 

@@ -69,6 +69,7 @@ struct AppleMusicLyricsView: View {
 
     @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
     @Environment(\.colorSchemeContrast) private var colorSchemeContrast
+    @Environment(\.scenePhase) private var scenePhase
     @Environment(PlayerStore.self) private var player
     @Environment(AppSettings.self) private var settings
 
@@ -117,6 +118,10 @@ struct AppleMusicLyricsView: View {
     @State private var hiddenInterfaceProgress: CGFloat
     @State private var lyricSharePresentation: LyricSharePresentation?
     @State private var seekFeedback: LyricSeekFeedback?
+
+    private var isAnimationActive: Bool {
+        isActive && scenePhase == .active
+    }
 
     init(
         lyrics: [LyricLine],
@@ -168,7 +173,7 @@ struct AppleMusicLyricsView: View {
                 AppleMusicLyricsFocusCoordinator(
                     lyrics: lyrics,
                     interludes: interludes,
-                    isActive: isActive,
+                    isActive: isAnimationActive,
                     playbackFocus: $playbackFocus,
                     visibleInterludeID: $visibleInterludeID,
                     activePlaybackLyricIDs: $activePlaybackLyricIDs
@@ -456,7 +461,7 @@ struct AppleMusicLyricsView: View {
                                         visibleInterludeID == interlude.id
                                         && retainedInterlude?.interlude.id
                                             != interlude.id,
-                                    isAnimationActive: isActive,
+                                    isAnimationActive: isAnimationActive,
                                     advanceTime:
                                         effectiveLyricsAdvanceTime,
                                     onInterfaceInteraction:
@@ -565,7 +570,7 @@ struct AppleMusicLyricsView: View {
             focusedLyricID: visualHighlightedLyricID,
             movementPhase: movementPhase,
             focusTransition: lyricFocusColorTransition,
-            isActive: isActive
+            isActive: isAnimationActive
         ) { movementOffset, focusProgress in
             LyricPressInteraction(
                 isSelected:
@@ -592,7 +597,7 @@ struct AppleMusicLyricsView: View {
                     line: line,
                     isPlaybackLine: isPlaybackLine,
                     isVocalActive: isActualPlaybackLine,
-                    isAnimationActive: isActive,
+                    isAnimationActive: isAnimationActive,
                     playbackFocusProgress: focusProgress.color,
                     usesPseudoTiming: context.usesPseudoTiming,
                     fontSize: CGFloat(resolvedLyricsFontSize),
@@ -813,7 +818,7 @@ struct AppleMusicLyricsView: View {
                 if let retainedInterlude {
                     AppleMusicRetainedInterludeOverlay(
                         presentation: retainedInterlude,
-                        isAnimationActive: isActive,
+                        isAnimationActive: isAnimationActive,
                         advanceTime: effectiveLyricsAdvanceTime,
                         onFinished: finishRetainedInterlude
                     )
@@ -1202,7 +1207,7 @@ struct AppleMusicLyricsView: View {
                         focusedLyricID: visualHighlightedLyricID,
                         movementPhase: movementPhase,
                         focusTransition: lyricFocusColorTransition,
-                        isActive: isActive
+                        isActive: isAnimationActive
                     ) { movementOffset, focusProgress in
                         let visualOffset =
                             movementOffset
@@ -1227,7 +1232,7 @@ struct AppleMusicLyricsView: View {
                         SynchronizedLyricText(
                             line: line,
                             isPlaybackLine: isPlaybackLine,
-                            isAnimationActive: isActive,
+                            isAnimationActive: isAnimationActive,
                             playbackFocusProgress:
                                 focusProgress.color,
                             usesPseudoTiming: usesPseudoTiming,
@@ -1914,7 +1919,7 @@ struct AppleMusicLyricsView: View {
             highlightedLyricID: requestedFocusLyricID,
             interludeID: focusedInterlude?.id,
             visibleInterludeID: visibleInterludeID,
-            isActive: isActive,
+            isActive: isAnimationActive,
             isBrowsingLyrics: isBrowsingLyrics,
             playbackFocusRequestGeneration: playbackFocusRequestGeneration
         )
